@@ -4,36 +4,20 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using TcpServerLibrary;
 
 namespace ServerLibrary
 {
     public class AsyncTcpServer : AbstractServer
     {
-        byte[] loginMessage;
-        byte[] passwordMessage;
-        byte[] welcomeMessage;
-        byte[] refuseMessage;
         static UserHandler userHandler = new UserHandler();
         static Dictionary<int, User> list = new Dictionary<int, User>();
-        byte[] guess;
-        byte[] msg;
-        byte[] msg2;
-        byte[] msg3;
-        byte[] msg4;
-
+        MessageReader messageReader;
         public delegate void TransmissionDataDelegate(NetworkStream stream);
 
         public AsyncTcpServer(IPAddress IP, int port) : base(IP, port)
         {
-            this.loginMessage = new ASCIIEncoding().GetBytes("Podaj login: \r\n");
-            this.passwordMessage = new ASCIIEncoding().GetBytes("Podaj haslo: \r\n");
-            this.welcomeMessage = new ASCIIEncoding().GetBytes("Zalogowano \r\n");
-            this.refuseMessage = new ASCIIEncoding().GetBytes("Nieprawidlowy login lub haslo \r\n");
-            this.guess = new ASCIIEncoding().GetBytes(" Zgadnij liczbe od 0 do 9 \r \n");
-            this.msg = new ASCIIEncoding().GetBytes(" Brawo udalo ci sie zgadnac liczbe! \r \n");
-            this.msg2 = new ASCIIEncoding().GetBytes(" Wybrano zla wartosc \r \n");
-            this.msg3 = new ASCIIEncoding().GetBytes(" Chcesz kontynuowac rozgrywke ? (1-tak 0-nie) \r \n");
-            this.msg4 = new ASCIIEncoding().GetBytes(" Rozgrywka zakonczona \r \n");
+            this.messageReader = new MessageReader();
         }
 
         protected override void AcceptClient()
@@ -63,7 +47,7 @@ namespace ServerLibrary
         protected override void BeginDataTransmission(NetworkStream stream)
         {
             var credentials = userHandler.ReadUsersCredentials();
-
+         
             while (true)
             {
                 try
@@ -72,113 +56,132 @@ namespace ServerLibrary
                     byte[] login = new byte[256];
                     byte[] password = new byte[256];
 
-                    stream.Write(loginMessage, 0, loginMessage.Length);
+                    byte[] loginMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("loginMessage"));
+                    stream.Write(loginMessageByte, 0, loginMessageByte.Length);
+
                     do
                     {
                         stream.Read(login, 0, login.Length);
                     } while (Encoding.UTF8.GetString(login).Replace("\0", "") == "\r\n");
                     string login_s = Encoding.UTF8.GetString(login).Replace("\0", "");
 
-                    stream.Write(passwordMessage, 0, passwordMessage.Length);
+                    string passwordMessage = "Podaj haslo: \r\n";
+                    byte[] passwordMessageByte = new ASCIIEncoding().GetBytes(passwordMessage);
+                    stream.Write(passwordMessageByte, 0, passwordMessageByte.Length);
+                    Console.WriteLine(passwordMessage);
+
                     do
                     {
                         stream.Read(password, 0, password.Length);
                     } while (Encoding.UTF8.GetString(password).Replace("\0", "") == "\r\n");
                     string password_s = Encoding.UTF8.GetString(password).Replace("\0", "");
+
                     try
                     {
                         if (credentials[login_s] == password_s)
                         {
+                            Game game = new Game();
+                           
+                            byte[] welcomeMessage = new ASCIIEncoding().GetBytes(messageReader.getMessage("welcomeMessage"));
                             stream.Write(welcomeMessage, 0, welcomeMessage.Length);
-                            int nextGame = 1;
-                            while (true)
-                            {
-                                int length = stream.Read(msg, 0, msg.Length);
-                                string result = Encoding.UTF8.GetString(msg).ToUpper();
-                                msg = Encoding.ASCII.GetBytes(result);
-                                stream.Write(msg, 0, length);
 
-                                Random random = new Random();
-                                int number = random.Next(10);
-                               
-                                byte[] buffer = new byte[256];
-                                Console.WriteLine("Number to guess: " + number);
-                                while (nextGame == 1)
+                            int nextGame = 1;
+
+                            int length = stream.Read(msg, 0, msg.Length);
+                            string result = Encoding.UTF8.GetString(msg).ToUpper();
+                            msg = Encoding.ASCII.GetBytes(result);
+                            stream.Write(msg, 0, length);
+
+                            byte[] buffer = new byte[256];
+                            Console.WriteLine("Number to guess: " + game.numberValue);
+                            while (nextGame == 1)
+                            {
+                                try
                                 {
+                                    byte[] guessMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("guessMessage"));
+                                    stream.Write(guessMessageByte, 0, guessMessageByte.Length);
+
+                                    int responseLength = stream.Read(buffer, 0, buffer.Length);
+                                    if (Encoding.UTF8.GetString(buffer, 0, responseLength) == "\r\n")
+                                    {
+                                        responseLength = stream.Read(buffer, 0, buffer.Length);
+                                    }
+                                    var guessedVal = Encoding.UTF8.GetString(buffer, 0, responseLength);
+
+                                    String time = DateTime.Now.ToString("h:mm:ss");
+                                    Console.WriteLine(time + " -> " + guessedVal);
+                                    int guessedValInt;
                                     try
                                     {
-                                        stream.Write(guess, 0, guess.Length);
+                                        guessedValInt = Int32.Parse(guessedVal);
+                                    }
+                                    catch (FormatException e)
+                                    {
+                                        guessedValInt = 102;
+                                    }
 
-                                        int responseLength = stream.Read(buffer, 0, buffer.Length);
+                                    if (guessedValInt > 100 || guessedValInt < 0)
+                                    {
+                                        byte[] badValueMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("badValueMessage"));
+                                        stream.Write(badValueMessageByte, 0, badValueMessageByte.Length);
+                                    }
+
+                                    string hotOrNotMessage = game.hotOrNot(guessedValInt);
+                                    byte[] hotOrNot = new ASCIIEncoding().GetBytes(hotOrNotMessage);
+                                    stream.Write(hotOrNot, 0, hotOrNot.Length);
+
+                                    if (game.numberValue.Equals(guessedValInt))
+                                    {
+                                        byte[] winningMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("winningMessage"));
+                                        stream.Write(winningMessageByte, 0, winningMessageByte.Length);
+                                        Console.WriteLine("Client guessed the number");
+
+                                        byte[] continueMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("continueMessage"));
+                                        stream.Write(continueMessageByte, 0, continueMessageByte.Length);
+
+                                        buffer = new byte[256];
+                                        responseLength = stream.Read(buffer, 0, buffer.Length);
                                         if (Encoding.UTF8.GetString(buffer, 0, responseLength) == "\r\n")
                                         {
                                             responseLength = stream.Read(buffer, 0, buffer.Length);
                                         }
-                                        var guessedVal = Encoding.UTF8.GetString(buffer, 0, responseLength);
+                                        var continueGame = Encoding.UTF8.GetString(buffer, 0, responseLength);
 
-                                        String time = DateTime.Now.ToString("h:mm:ss");
-                                        Console.WriteLine(time + " -> " + guessedVal);
-                                        int guessedVal2;
-                                        try
+                                        nextGame = Int32.Parse(continueGame);
+                                        if (nextGame == 0)
                                         {
-                                            guessedVal2 = Int32.Parse(guessedVal);
+                                            byte[] endMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("endMessage"));
+                                            stream.Write(endMessageByte, 0, endMessageByte.Length);
+
+                                            tcpClient.GetStream().Close();
+                                            tcpClient.Close();
+                                            return;
                                         }
-                                        catch (FormatException e)
+                                        else
                                         {
-                                            guessedVal2 = 12;
+                                            game = new Game();
+                                            Console.WriteLine("Number to guess: " + game.numberValue);
                                         }
-
-                                        if (guessedVal2 > 11 || guessedVal2 < 0)
-                                        {
-                                            stream.Write(msg2, 0, msg2.Length);
-                                        }
-
-                                        if (number.Equals(guessedVal2))
-                                        {
-                                            stream.Write(msg, 0, msg.Length);
-                                            Console.WriteLine("Client guessed the number");
-
-                                            stream.Write(msg3, 0, msg3.Length);
-
-                                            buffer = new byte[256];
-                                            responseLength = stream.Read(buffer, 0, buffer.Length);
-                                            if (Encoding.UTF8.GetString(buffer, 0, responseLength) == "\r\n")
-                                            {
-                                                responseLength = stream.Read(buffer, 0, buffer.Length);
-                                            }
-                                            var continueGame = Encoding.UTF8.GetString(buffer, 0, responseLength);
-
-                                            nextGame = Int32.Parse(continueGame);
-                                            if (nextGame == 0)
-                                            {
-                                                stream.Write(msg4, 0, msg4.Length);
-                                                tcpClient.GetStream().Close();
-                                                tcpClient.Close();
-                                                return;
-                                            }
-                                            else
-                                            {
-                                                number = random.Next(10);
-                                                Console.WriteLine("Number to guess: " + number);
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        nextGame = 0;
-                                        Console.WriteLine("Zaden klient nie jest polonczony z serwerem");
                                     }
                                 }
+                                catch (Exception ex)
+                                {
+                                    nextGame = 0;
+                                    Console.WriteLine("Zaden klient nie jest polonczony z serwerem");
+                                }
                             }
+
                         }
                         else
                         {
-                            stream.Write(refuseMessage, 0, refuseMessage.Length);
+                            byte[] refuseMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("refuseMessage"));
+                            stream.Write(refuseMessageByte, 0, refuseMessageByte.Length);
                         }
                     }
                     catch
                     {
-                        stream.Write(refuseMessage, 0, refuseMessage.Length);
+                        byte[] refuseMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("refuseMessage"));
+                        stream.Write(refuseMessageByte, 0, refuseMessageByte.Length);
                     }
                 }
                 catch (IOException)
