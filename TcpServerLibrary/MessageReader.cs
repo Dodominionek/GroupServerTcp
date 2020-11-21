@@ -13,7 +13,7 @@ namespace ServerLibrary
 
         }
 
-        public static Dictionary<string, string> GetMessages()
+        public static Dictionary<string, string> GetMessages(string id)
         {
             string line;
             var credentials = new Dictionary<string, string>();

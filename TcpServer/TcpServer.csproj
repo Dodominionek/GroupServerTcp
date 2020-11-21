@@ -51,9 +51,6 @@
     <None Include="Messages.conf" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="usersCredentials.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\TcpServerLibrary\TcpServerLibrary.csproj">
       <Project>{32caaa83-012c-41df-b832-8b99bbec6066}</Project>
       <Name>TcpServerLibrary</Name>

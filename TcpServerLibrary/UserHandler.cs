@@ -48,8 +48,8 @@ namespace ServerLibrary
             foreach (var user in ReadUsersCredentials())
             {
                 addUser(list, user.Key, user.Value);
-                Console.WriteLine(user.Key + " " + user.Value);
             }
+            showUsers(list);
         }
 
         //Usuwanie usera z listy po id lub loginie (nie kasuje z whitelisty na razie)
@@ -76,15 +76,15 @@ namespace ServerLibrary
             int key = -1;
             foreach (KeyValuePair<int, User> entry in list)
             {
-                if(entry.Value.getLogin() == log)
+                if (entry.Value.getLogin() == log)
                 {
                     key = entry.Key;
                 }
             }
-            if(key == -1)
+            if (key == -1)
             {
                 return "There is no user with login: " + log;
-            } 
+            }
             else
             {
                 list.Remove(key);
@@ -117,6 +117,15 @@ namespace ServerLibrary
                 }
             }
             return false;
+        }
+
+        public void showUsers(Dictionary<int, User> list)
+        {
+            Console.WriteLine("Current users: ");
+            foreach (var user in list)
+            {
+                Console.WriteLine("Login: " + user.Value.getLogin() + " Password: " + user.Value.getPassword());
+            }
         }
     }
 }
