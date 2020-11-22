@@ -7,63 +7,86 @@ using System.Threading.Tasks;
 
 namespace ServerLibrary
 {
-    class UserHandler
+    public class UserHandler
     {
-        public UserHandler() { }
+        private string path = Directory.GetCurrentDirectory() + "\\users.txt";
+        private Dictionary<string, string> credentials;
+        private Dictionary<int, User> list;
+
+        public UserHandler() {
+            ReadUsersCredentials();
+        }
 
         Registration registration = new Registration();
 
-        private string path = Directory.GetCurrentDirectory() + "\\users.txt";
+        public Dictionary<string, string> Credentials { get => credentials; set => credentials = value; }
+        internal Dictionary<int, User> List { get => list; set => list = value; }
 
         // Sprawdza czy dany user jest na liście, jeśli tak to go dodaje (Whitelista)
-        
+        public void addNewUser(string log, string pass)
+        {
+            Credentials.Add(log, pass);
+            StreamWriter file = File.AppendText("usersCredentials.txt");
+            file.WriteLine(log + ";" + pass);
+            file.Close();
+        }
 
-        public Dictionary<string, string> ReadUsersCredentials()
+        public void ReadUsersCredentials()
         {
             string line;
             var credentials = new Dictionary<string, string>();
-            System.IO.StreamReader file = new System.IO.StreamReader("usersCredentials.txt");
+            StreamReader file = new StreamReader("usersCredentials.txt");
             while ((line = file.ReadLine()) != null)
             {
                 var cred = line.Split(';');
                 credentials.Add(cred[0], cred[1]);
             }
             file.Close();
-            return credentials;
+            Credentials = credentials;
         }
 
-        public void init(Dictionary<int, User> list)
+        public void showUsers()
         {
-            foreach (var user in ReadUsersCredentials())
+            Console.WriteLine("Current users: ");
+            foreach (var user in List)
             {
-                registration.addUser(list, user.Key, user.Value);
+                Console.WriteLine("Login: " + user.Value.getLogin() + " Password: " + user.Value.getPassword());
             }
-            showUsers(list);
         }
+
+        public void init()
+        {
+            //foreach (var user in Credentials)
+            //{
+            //    registration.addUser(List, user.Key, user.Value);
+            //}
+            showUsers();
+        }
+
 
         //Usuwanie usera z listy po id lub loginie (nie kasuje z whitelisty na razie)
-        public string removeUser(Dictionary<int, User> list, int id)
+        public string removeUser(int id)
         {
-            list.Remove(id);
-            var temp = list;
-            list = new Dictionary<int, User>();
+            List.Remove(id);
+            var temp = List;
+            List = new Dictionary<int, User>();
             System.IO.StreamWriter file = new System.IO.StreamWriter("usersCredentials.txt");
             file.Write("");
             file.Close();
             file = File.AppendText("usersCredentials.txt");
             foreach (var user in temp)
             {
-                list.Add(user.Key, user.Value);
+                List.Add(user.Key, user.Value);
                 file.WriteLine(user.Value.getLogin() + ";" + user.Value.getPassword());
             }
             file.Close();
             return "User with id: " + id + " removed";
         }
 
-        public string removeUser(Dictionary<int, User> list, string log)
+        public string removeUser(string log)
         {
             int key = -1;
-            foreach (KeyValuePair<int, User> entry in list)
+            foreach (KeyValuePair<int, User> entry in List)
             {
                 if (entry.Value.getLogin() == log)
                 {
@@ -76,16 +99,16 @@ namespace ServerLibrary
             }
             else
             {
-                list.Remove(key);
-                var temp = list;
-                list = new Dictionary<int, User>();
-                System.IO.StreamWriter file = new System.IO.StreamWriter("usersCredentials.txt");
+                List.Remove(key);
+                var temp = List;
+                List = new Dictionary<int, User>();
+                StreamWriter file = new StreamWriter("usersCredentials.txt");
                 file.Write("");
                 file.Close();
                 file = File.AppendText("usersCredentials.txt");
                 foreach (var user in temp)
                 {
-                    list.Add(user.Key, user.Value);
+                    List.Add(user.Key, user.Value);
                     file.WriteLine(user.Value.getLogin() + ";" + user.Value.getPassword());
                 }
                 file.Close();
@@ -93,9 +116,9 @@ namespace ServerLibrary
             }
         }
 
-        public bool login(Dictionary<int, User> list, string log, string pass)
+        public bool login(string log, string pass)
         {
-            foreach (KeyValuePair<int, User> entry in list)
+            foreach (KeyValuePair<int, User> entry in List)
             {
                 if (entry.Value.getLogin() == log)
                 {
@@ -108,13 +131,6 @@ namespace ServerLibrary
             return false;
         }
 
-        public void showUsers(Dictionary<int, User> list)
-        {
-            Console.WriteLine("Current users: ");
-            foreach (var user in list)
-            {
-                Console.WriteLine("Login: " + user.Value.getLogin() + " Password: " + user.Value.getPassword());
-            }
-        }
+
     }
 }

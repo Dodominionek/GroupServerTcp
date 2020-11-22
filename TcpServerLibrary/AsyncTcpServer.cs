@@ -11,7 +11,6 @@ namespace ServerLibrary
     public class AsyncTcpServer : AbstractServer
     {
         static UserHandler userHandler = new UserHandler();
-        static Dictionary<int, User> list = new Dictionary<int, User>();
         MessageReader messageReader;
         public delegate void TransmissionDataDelegate(NetworkStream stream);
 
@@ -40,13 +39,59 @@ namespace ServerLibrary
         public override void Start()
         {
             StartListening();
-            userHandler.init(list);
+            //userHandler.init();
             AcceptClient();
+        }
+
+        public bool Menu(NetworkStream stream, UserHandler userHandler)
+        {
+            byte[] msg = new byte[256];
+            byte[] welcomeMessageByte = new ASCIIEncoding().GetBytes("1 - Zaloguj sie \r\n2 - Zarejestruj sie");
+            stream.Write(welcomeMessageByte, 0, welcomeMessageByte.Length);
+            do
+            {
+                stream.Read(msg, 0, msg.Length);
+            } while (Encoding.UTF8.GetString(msg).Replace("\0", "") == "\r\n");
+
+            // rejestracja nowego uzytkownika
+            if(Encoding.UTF8.GetString(msg).Replace("\0", "") == "2")
+            {
+                byte[] loginMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("loginMessage"));
+                stream.Write(loginMessageByte, 0, loginMessageByte.Length);
+                byte[] login = new byte[256];
+                byte[] password = new byte[256];
+                do
+                {
+                    stream.Read(login, 0, login.Length);
+                } while (Encoding.UTF8.GetString(login).Replace("\0", "") == "\r\n");
+                string login_s = Encoding.UTF8.GetString(login).Replace("\0", "");
+
+                byte[] passwordMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("passwordMessage"));
+                stream.Write(passwordMessageByte, 0, passwordMessageByte.Length);
+
+                do
+                {
+                    stream.Read(password, 0, password.Length);
+                } while (Encoding.UTF8.GetString(password).Replace("\0", "") == "\r\n");
+                string password_s = Encoding.UTF8.GetString(password).Replace("\0", "");
+
+                try
+                {
+                    userHandler.Credentials.Add(login_s, password_s);
+                }
+                catch{
+                    byte[] messageByte = new ASCIIEncoding().GetBytes("Uzytkownik o takim loginie juz istnieje \r\n");
+                    stream.Write(passwordMessageByte, 0, messageByte.Length);
+                    return false;
+                }
+            }
+            return true;
         }
 
         protected override void BeginDataTransmission(NetworkStream stream)
         {
-            var credentials = userHandler.ReadUsersCredentials();
+            UserHandler userHandler = new UserHandler();
+            var credentials = userHandler.Credentials;
          
             while (true)
             {
@@ -55,6 +100,13 @@ namespace ServerLibrary
                     byte[] msg = new byte[256];
                     byte[] login = new byte[256];
                     byte[] password = new byte[256];
+
+                    bool go = false;
+                    do
+                    {
+                        go = Menu(stream, userHandler);
+                    } while (go == false);
+                    
 
                     byte[] loginMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("loginMessage"));
                     stream.Write(loginMessageByte, 0, loginMessageByte.Length);
@@ -150,10 +202,6 @@ namespace ServerLibrary
                                         {
                                             byte[] endMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("endMessage"));
                                             stream.Write(endMessageByte, 0, endMessageByte.Length);
-
-                                            tcpClient.GetStream().Close();
-                                            tcpClient.Close();
-                                            return;
                                         }
                                         else
                                         {
@@ -165,6 +213,7 @@ namespace ServerLibrary
                                 catch (Exception ex)
                                 {
                                     nextGame = 0;
+                                    Console.WriteLine(ex);
                                     Console.WriteLine("Zaden klient nie jest polonczony z serwerem");
                                 }
                             }

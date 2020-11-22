@@ -10,9 +10,9 @@ namespace TcpServerLibrary
     class Game
     {
 
-        public  int numberValue;
+        public int numberValue;
 
-        public Game ()
+        public Game()
         {
             this.numberValue = randomInt();
         }
