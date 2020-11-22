@@ -11,23 +11,12 @@ namespace ServerLibrary
     {
         public UserHandler() { }
 
+        Registration registration = new Registration();
+
         private string path = Directory.GetCurrentDirectory() + "\\users.txt";
 
-        // Sprawdza czy dany user jest na liúcie, jeúli tak to go dodaje (Whitelista)
-        public void addUser(Dictionary<int, User> list, string log, string pass)
-        {
-            User user = new User(log, pass);
-            User.id += 1;
-            list.Add(User.id, user);
-        }
-
-        public void addNewUser(Dictionary<int, User> list, string log, string pass)
-        {
-            addUser(list, log, pass);
-            System.IO.StreamWriter file = File.AppendText("usersCredentials.txt");
-            file.WriteLine(log + ";" + pass);
-            file.Close();
-        }
+        // Sprawdza czy dany user jest na li≈õcie, je≈õli tak to go dodaje (Whitelista)
+        
 
         public Dictionary<string, string> ReadUsersCredentials()
         {
@@ -47,7 +36,7 @@ namespace ServerLibrary
         {
             foreach (var user in ReadUsersCredentials())
             {
-                addUser(list, user.Key, user.Value);
+                registration.addUser(list, user.Key, user.Value);
             }
             showUsers(list);
         }
