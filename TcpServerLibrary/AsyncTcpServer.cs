@@ -65,11 +65,9 @@ namespace ServerLibrary
                     } while (Encoding.UTF8.GetString(login).Replace("\0", "") == "\r\n");
                     string login_s = Encoding.UTF8.GetString(login).Replace("\0", "");
 
-                    string passwordMessage = "Podaj haslo: \r\n";
-                    byte[] passwordMessageByte = new ASCIIEncoding().GetBytes(passwordMessage);
+                    byte[] passwordMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("passwordMessage"));
                     stream.Write(passwordMessageByte, 0, passwordMessageByte.Length);
-                    Console.WriteLine(passwordMessage);
-
+           
                     do
                     {
                         stream.Read(password, 0, password.Length);
