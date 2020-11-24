@@ -39,49 +39,44 @@ namespace ServerLibrary
         public override void Start()
         {
             StartListening();
-            //userHandler.init();
             AcceptClient();
+        }
+
+        private string ReadResponse(NetworkStream stream)
+        {
+            byte[] response = new byte[256];
+            do
+            {
+                stream.Read(response, 0, response.Length);
+            } while (Encoding.UTF8.GetString(response).Replace("\0", "") == "\r\n");
+            return Encoding.UTF8.GetString(response).Replace("\0", "");
+        }
+
+        private void SendMessage(NetworkStream stream, string message)
+        {
+            byte[] messageBytes = new ASCIIEncoding().GetBytes(message);
+            stream.Write(messageBytes, 0, messageBytes.Length);
         }
 
         public bool Menu(NetworkStream stream, UserHandler userHandler)
         {
-            byte[] msg = new byte[256];
-            byte[] welcomeMessageByte = new ASCIIEncoding().GetBytes("1 - Zaloguj sie \r\n2 - Zarejestruj sie");
-            stream.Write(welcomeMessageByte, 0, welcomeMessageByte.Length);
-            do
-            {
-                stream.Read(msg, 0, msg.Length);
-            } while (Encoding.UTF8.GetString(msg).Replace("\0", "") == "\r\n");
+            SendMessage(stream, messageReader.getMessage("menu"));
+            var msg = ReadResponse(stream);
 
             // rejestracja nowego uzytkownika
-            if(Encoding.UTF8.GetString(msg).Replace("\0", "") == "2")
+            if(msg == "2")
             {
-                byte[] loginMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("loginMessage"));
-                stream.Write(loginMessageByte, 0, loginMessageByte.Length);
-                byte[] login = new byte[256];
-                byte[] password = new byte[256];
-                do
-                {
-                    stream.Read(login, 0, login.Length);
-                } while (Encoding.UTF8.GetString(login).Replace("\0", "") == "\r\n");
-                string login_s = Encoding.UTF8.GetString(login).Replace("\0", "");
+                SendMessage(stream, messageReader.getMessage("loginMessage"));
+                string login = ReadResponse(stream);
 
-                byte[] passwordMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("passwordMessage"));
-                stream.Write(passwordMessageByte, 0, passwordMessageByte.Length);
-
-                do
-                {
-                    stream.Read(password, 0, password.Length);
-                } while (Encoding.UTF8.GetString(password).Replace("\0", "") == "\r\n");
-                string password_s = Encoding.UTF8.GetString(password).Replace("\0", "");
-
+                SendMessage(stream, messageReader.getMessage("passwordMessage"));
+                string password = ReadResponse(stream);
                 try
                 {
-                    userHandler.Credentials.Add(login_s, password_s);
+                    userHandler.AddNewUser(login, password);
                 }
                 catch{
-                    byte[] messageByte = new ASCIIEncoding().GetBytes("Uzytkownik o takim loginie juz istnieje \r\n");
-                    stream.Write(passwordMessageByte, 0, messageByte.Length);
+                    SendMessage(stream, messageReader.getMessage("wrongLoginMessage"));
                     return false;
                 }
             }
@@ -91,6 +86,7 @@ namespace ServerLibrary
         protected override void BeginDataTransmission(NetworkStream stream)
         {
             UserHandler userHandler = new UserHandler();
+            //userHandler.ShowUsers();
             var credentials = userHandler.Credentials;
          
             while (true)
@@ -98,37 +94,23 @@ namespace ServerLibrary
                 try
                 {
                     byte[] msg = new byte[256];
-                    byte[] login = new byte[256];
-                    byte[] password = new byte[256];
 
                     bool go = false;
                     do
                     {
                         go = Menu(stream, userHandler);
                     } while (go == false);
-                    
 
-                    byte[] loginMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("loginMessage"));
-                    stream.Write(loginMessageByte, 0, loginMessageByte.Length);
 
-                    do
-                    {
-                        stream.Read(login, 0, login.Length);
-                    } while (Encoding.UTF8.GetString(login).Replace("\0", "") == "\r\n");
-                    string login_s = Encoding.UTF8.GetString(login).Replace("\0", "");
+                    SendMessage(stream, messageReader.getMessage("loginMessage"));
+                    string login = ReadResponse(stream);
 
-                    byte[] passwordMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("passwordMessage"));
-                    stream.Write(passwordMessageByte, 0, passwordMessageByte.Length);
-           
-                    do
-                    {
-                        stream.Read(password, 0, password.Length);
-                    } while (Encoding.UTF8.GetString(password).Replace("\0", "") == "\r\n");
-                    string password_s = Encoding.UTF8.GetString(password).Replace("\0", "");
+                    SendMessage(stream, messageReader.getMessage("passwordMessage"));
+                    string password = ReadResponse(stream);
 
                     try
                     {
-                        if (credentials[login_s] == password_s)
+                        if (userHandler.Login(login,password))
                         {
                             Game game = new Game();
                            
