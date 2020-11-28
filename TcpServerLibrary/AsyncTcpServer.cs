@@ -112,105 +112,26 @@ namespace ServerLibrary
                     {
                         if (userHandler.Login(login,password))
                         {
-                            Game game = new Game();
-                           
-                            byte[] welcomeMessage = new ASCIIEncoding().GetBytes(messageReader.getMessage("welcomeMessage"));
-                            stream.Write(welcomeMessage, 0, welcomeMessage.Length);
 
-                            int nextGame = 1;
+                            SendMessage(stream, messageReader.getMessage("welcomeMessage"));
 
                             int length = stream.Read(msg, 0, msg.Length);
                             string result = Encoding.UTF8.GetString(msg).ToUpper();
                             msg = Encoding.ASCII.GetBytes(result);
                             stream.Write(msg, 0, length);
 
-                            byte[] buffer = new byte[256];
-                            Console.WriteLine("Number to guess: " + game.numberValue);
-                            while (nextGame == 1)
-                            {
-                                try
-                                {
-                                    byte[] guessMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("guessMessage"));
-                                    stream.Write(guessMessageByte, 0, guessMessageByte.Length);
-
-                                    int responseLength = stream.Read(buffer, 0, buffer.Length);
-                                    if (Encoding.UTF8.GetString(buffer, 0, responseLength) == "\r\n")
-                                    {
-                                        responseLength = stream.Read(buffer, 0, buffer.Length);
-                                    }
-                                    var guessedVal = Encoding.UTF8.GetString(buffer, 0, responseLength);
-
-                                    String time = DateTime.Now.ToString("h:mm:ss");
-                                    Console.WriteLine(time + " -> " + guessedVal);
-                                    int guessedValInt;
-                                    try
-                                    {
-                                        guessedValInt = Int32.Parse(guessedVal);
-                                    }
-                                    catch (FormatException e)
-                                    {
-                                        guessedValInt = 102;
-                                    }
-
-                                    if (guessedValInt > 100 || guessedValInt < 0)
-                                    {
-                                        byte[] badValueMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("badValueMessage"));
-                                        stream.Write(badValueMessageByte, 0, badValueMessageByte.Length);
-                                    }
-
-                                    string hotOrNotMessage = game.hotOrNot(guessedValInt);
-                                    byte[] hotOrNot = new ASCIIEncoding().GetBytes(hotOrNotMessage);
-                                    stream.Write(hotOrNot, 0, hotOrNot.Length);
-
-                                    if (game.numberValue.Equals(guessedValInt))
-                                    {
-                                        byte[] winningMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("winningMessage"));
-                                        stream.Write(winningMessageByte, 0, winningMessageByte.Length);
-                                        Console.WriteLine("Client guessed the number");
-
-                                        byte[] continueMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("continueMessage"));
-                                        stream.Write(continueMessageByte, 0, continueMessageByte.Length);
-
-                                        buffer = new byte[256];
-                                        responseLength = stream.Read(buffer, 0, buffer.Length);
-                                        if (Encoding.UTF8.GetString(buffer, 0, responseLength) == "\r\n")
-                                        {
-                                            responseLength = stream.Read(buffer, 0, buffer.Length);
-                                        }
-                                        var continueGame = Encoding.UTF8.GetString(buffer, 0, responseLength);
-
-                                        nextGame = Int32.Parse(continueGame);
-                                        if (nextGame == 0)
-                                        {
-                                            byte[] endMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("endMessage"));
-                                            stream.Write(endMessageByte, 0, endMessageByte.Length);
-                                        }
-                                        else
-                                        {
-                                            game = new Game();
-                                            Console.WriteLine("Number to guess: " + game.numberValue);
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    nextGame = 0;
-                                    Console.WriteLine(ex);
-                                    Console.WriteLine("Zaden klient nie jest polonczony z serwerem");
-                                }
-                            }
-
+                            Game.guessingGame(stream, messageReader);
+                            
                         }
                         else
                         {
-                            byte[] refuseMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("refuseMessage"));
-                            stream.Write(refuseMessageByte, 0, refuseMessageByte.Length);
+                            SendMessage(stream, messageReader.getMessage("refuseMessage"));
+                         
                         }
                     }
                     catch
                     {
-                        byte[] refuseMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("refuseMessage"));
-                        stream.Write(refuseMessageByte, 0, refuseMessageByte.Length);
+                        SendMessage(stream, messageReader.getMessage("refuseMessage"));
                     }
                 }
                 catch (IOException)

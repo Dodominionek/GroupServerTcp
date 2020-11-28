@@ -51,9 +51,7 @@
     <None Include="Messages.conf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="usersCredentials">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <None Include="usersCredentials" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TcpServerLibrary\TcpServerLibrary.csproj">
