@@ -10,8 +10,9 @@ namespace TcpServerLibrary
 {
     class Game
     {
-
+        private int tmpValue = 0;
         public int numberValue;
+        private int counter = 0;
 
         public Game()
         {
@@ -24,25 +25,18 @@ namespace TcpServerLibrary
             return random.Next(100);
         }
 
-        public static void guessingGame(NetworkStream stream, MessageReader messageReader)
+        public static void guessingGame(NetworkStream stream, MessageReader messageReader, ClientComunicator comunicator)
         {
             int nextGame = 1;
             Game game = new Game();
-            byte[] buffer = new byte[256];
             Console.WriteLine("Number to guess: " + game.numberValue);
             while (nextGame == 1)
             {
                 try
                 {
-                    byte[] guessMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("guessMessage"));
-                    stream.Write(guessMessageByte, 0, guessMessageByte.Length);
-
-                    int responseLength = stream.Read(buffer, 0, buffer.Length);
-                    if (Encoding.UTF8.GetString(buffer, 0, responseLength) == "\r\n")
-                    {
-                        responseLength = stream.Read(buffer, 0, buffer.Length);
-                    }
-                    var guessedVal = Encoding.UTF8.GetString(buffer, 0, responseLength);
+                    comunicator.SendMessage(stream, messageReader.getMessage("guessMessage"));
+         
+                    var guessedVal = comunicator.ReadResponse(stream);
 
                     String time = DateTime.Now.ToString("h:mm:ss");
                     Console.WriteLine(time + " -> " + guessedVal);
@@ -55,39 +49,27 @@ namespace TcpServerLibrary
                     {
                         guessedValInt = 102;
                     }
-
                     if (guessedValInt > 100 || guessedValInt < 0)
                     {
-                        byte[] badValueMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("badValueMessage"));
-                        stream.Write(badValueMessageByte, 0, badValueMessageByte.Length);
+                        comunicator.SendMessage(stream, messageReader.getMessage("badValueMessage"));
                     }
 
                     string hotOrNotMessage = game.hotOrNot(guessedValInt);
-                    byte[] hotOrNot = new ASCIIEncoding().GetBytes(hotOrNotMessage);
-                    stream.Write(hotOrNot, 0, hotOrNot.Length);
+                    comunicator.SendMessage(stream, hotOrNotMessage);
 
                     if (game.numberValue.Equals(guessedValInt))
                     {
-                        byte[] winningMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("winningMessage"));
-                        stream.Write(winningMessageByte, 0, winningMessageByte.Length);
+                        comunicator.SendMessage(stream, messageReader.getMessage("winningMessage"));
                         Console.WriteLine("Client guessed the number");
 
-                        byte[] continueMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("continueMessage"));
-                        stream.Write(continueMessageByte, 0, continueMessageByte.Length);
+                        comunicator.SendMessage(stream, messageReader.getMessage("continueMessage"));
 
-                        buffer = new byte[256];
-                        responseLength = stream.Read(buffer, 0, buffer.Length);
-                        if (Encoding.UTF8.GetString(buffer, 0, responseLength) == "\r\n")
-                        {
-                            responseLength = stream.Read(buffer, 0, buffer.Length);
-                        }
-                        var continueGame = Encoding.UTF8.GetString(buffer, 0, responseLength);
+                        var continueGame = comunicator.ReadResponse(stream); 
 
                         nextGame = Int32.Parse(continueGame);
                         if (nextGame == 0)
                         {
-                            byte[] endMessageByte = new ASCIIEncoding().GetBytes(messageReader.getMessage("endMessage"));
-                            stream.Write(endMessageByte, 0, endMessageByte.Length);
+                            comunicator.SendMessage(stream, messageReader.getMessage("endMessage"));
                         }
                         else
                         {
@@ -99,31 +81,50 @@ namespace TcpServerLibrary
                 catch (Exception ex)
                 {
                     nextGame = 0;
-                    Console.WriteLine(ex);
                     Console.WriteLine("Zaden klient nie jest polonczony z serwerem");
                 }
             }
         }
 
         public string hotOrNot(int guessedValue)
-        {
+        {   
             string hotOrNot = "";
             if (guessedValue < numberValue + 10 && guessedValue > numberValue - 10)
             {
                  hotOrNot = " Goroco \r\n";
+                 counter = 0;
             }
-            else if (guessedValue < numberValue + 20 && guessedValue > numberValue - 20)
+            else if (guessedValue < numberValue + 25 && guessedValue > numberValue - 25)
             {
-                 hotOrNot = " Cieplo \r\n";
+                hotOrNot = " Cieplo \r\n";
+                if (guessedValue > numberValue && counter == 1)
+                {
+                    if (guessedValue - numberValue < tmpValue - numberValue)
+                    {
+                        hotOrNot = " Cieplej \r\n";
+                    }
+                }
+                else if(guessedValue < numberValue && counter == 1)
+                {
+                    if (guessedValue - numberValue > tmpValue - numberValue)
+                    {
+                        hotOrNot = " Cieplej \r\n";
+                    }
+                }
+                    counter = 1;
             }
-            else if (guessedValue < numberValue + 35 && guessedValue > numberValue - 35)
+
+            else if (guessedValue < numberValue + 40 && guessedValue > numberValue - 40)
             {
                  hotOrNot = " Zimno \r\n";
+                 counter = 0;
             }
             else 
             {
                  hotOrNot = " Mrozno \r\n";
+                 counter = 0;
             }
+            tmpValue = guessedValue;
             return hotOrNot;
         }
     }

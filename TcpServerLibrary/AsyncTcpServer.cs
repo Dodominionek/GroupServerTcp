@@ -12,11 +12,13 @@ namespace ServerLibrary
     {
         static UserHandler userHandler = new UserHandler();
         MessageReader messageReader;
+        ClientComunicator comunicator;
         public delegate void TransmissionDataDelegate(NetworkStream stream);
 
         public AsyncTcpServer(IPAddress IP, int port) : base(IP, port)
         {
             this.messageReader = new MessageReader();
+            this.comunicator = new ClientComunicator();
         }
 
         protected override void AcceptClient()
@@ -42,41 +44,26 @@ namespace ServerLibrary
             AcceptClient();
         }
 
-        private string ReadResponse(NetworkStream stream)
-        {
-            byte[] response = new byte[256];
-            do
-            {
-                stream.Read(response, 0, response.Length);
-            } while (Encoding.UTF8.GetString(response).Replace("\0", "") == "\r\n");
-            return Encoding.UTF8.GetString(response).Replace("\0", "");
-        }
-
-        private void SendMessage(NetworkStream stream, string message)
-        {
-            byte[] messageBytes = new ASCIIEncoding().GetBytes(message);
-            stream.Write(messageBytes, 0, messageBytes.Length);
-        }
-
+       
         public bool Menu(NetworkStream stream, UserHandler userHandler)
         {
-            SendMessage(stream, messageReader.getMessage("menu"));
-            var msg = ReadResponse(stream);
+            comunicator.SendMessage(stream, messageReader.getMessage("menu"));
+            var msg = comunicator.ReadResponse(stream);
 
             // rejestracja nowego uzytkownika
             if(msg == "2")
             {
-                SendMessage(stream, messageReader.getMessage("loginMessage"));
-                string login = ReadResponse(stream);
+                comunicator.SendMessage(stream, messageReader.getMessage("loginMessage"));
+                string login = comunicator.ReadResponse(stream);
 
-                SendMessage(stream, messageReader.getMessage("passwordMessage"));
-                string password = ReadResponse(stream);
+                comunicator.SendMessage(stream, messageReader.getMessage("passwordMessage"));
+                string password = comunicator.ReadResponse(stream);
                 try
                 {
                     userHandler.AddNewUser(login, password);
                 }
-                catch{
-                    SendMessage(stream, messageReader.getMessage("wrongLoginMessage"));
+                catch {
+                    comunicator.SendMessage(stream, messageReader.getMessage("wrongLoginMessage"));
                     return false;
                 }
             }
@@ -102,36 +89,35 @@ namespace ServerLibrary
                     } while (go == false);
 
 
-                    SendMessage(stream, messageReader.getMessage("loginMessage"));
-                    string login = ReadResponse(stream);
+                    comunicator.SendMessage(stream, messageReader.getMessage("loginMessage"));
+                    string login = comunicator.ReadResponse(stream);
 
-                    SendMessage(stream, messageReader.getMessage("passwordMessage"));
-                    string password = ReadResponse(stream);
+                    comunicator.SendMessage(stream, messageReader.getMessage("passwordMessage"));
+                    string password = comunicator.ReadResponse(stream);
 
                     try
                     {
                         if (userHandler.Login(login,password))
                         {
 
-                            SendMessage(stream, messageReader.getMessage("welcomeMessage"));
+                            comunicator.SendMessage(stream, messageReader.getMessage("welcomeMessage"));
 
                             int length = stream.Read(msg, 0, msg.Length);
                             string result = Encoding.UTF8.GetString(msg).ToUpper();
                             msg = Encoding.ASCII.GetBytes(result);
                             stream.Write(msg, 0, length);
 
-                            Game.guessingGame(stream, messageReader);
+                            Game.guessingGame(stream, messageReader,comunicator);
                             
                         }
                         else
                         {
-                            SendMessage(stream, messageReader.getMessage("refuseMessage"));
-                         
+                            comunicator.SendMessage(stream, messageReader.getMessage("refuseMessage"));
                         }
                     }
                     catch
                     {
-                        SendMessage(stream, messageReader.getMessage("refuseMessage"));
+                        comunicator.SendMessage(stream, messageReader.getMessage("refuseMessage"));
                     }
                 }
                 catch (IOException)
