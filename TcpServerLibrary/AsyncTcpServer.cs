@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -44,25 +44,29 @@ namespace ServerLibrary
             AcceptClient();
         }
 
-       
+
         public bool Menu(NetworkStream stream, UserHandler userHandler)
         {
             comunicator.SendMessage(stream, messageReader.getMessage("menu"));
             var msg = comunicator.ReadResponse(stream);
 
             // rejestracja nowego uzytkownika
-            if(msg == "2")
+            if (msg == "2")
             {
                 comunicator.SendMessage(stream, messageReader.getMessage("loginMessage"));
                 string login = comunicator.ReadResponse(stream);
 
                 comunicator.SendMessage(stream, messageReader.getMessage("passwordMessage"));
                 string password = comunicator.ReadResponse(stream);
+
+                comunicator.SendMessage(stream, messageReader.getMessage("passwordMessage"));
+                int permission = Int32.Parse(comunicator.ReadResponse(stream));
                 try
                 {
-                    userHandler.AddNewUser(login, password);
+                    userHandler.AddNewUser(login, password, permission);
                 }
-                catch {
+                catch
+                {
                     comunicator.SendMessage(stream, messageReader.getMessage("wrongLoginMessage"));
                     return false;
                 }
@@ -74,8 +78,8 @@ namespace ServerLibrary
         {
             UserHandler userHandler = new UserHandler();
             //userHandler.ShowUsers();
-            var credentials = userHandler.Credentials;
-         
+            var credentials = userHandler.UserList;
+
             while (true)
             {
                 try
@@ -95,9 +99,12 @@ namespace ServerLibrary
                     comunicator.SendMessage(stream, messageReader.getMessage("passwordMessage"));
                     string password = comunicator.ReadResponse(stream);
 
+                    Console.WriteLine("|" + login + "|" + password + "|");
+                    userHandler.ShowUsers();
+
                     try
                     {
-                        if (userHandler.Login(login,password))
+                        if (userHandler.Login(login, password))
                         {
 
                             comunicator.SendMessage(stream, messageReader.getMessage("welcomeMessage"));
@@ -107,8 +114,8 @@ namespace ServerLibrary
                             msg = Encoding.ASCII.GetBytes(result);
                             stream.Write(msg, 0, length);
 
-                            Game.guessingGame(stream, messageReader,comunicator);
-                            
+                            Game.guessingGame(stream, messageReader, comunicator);
+
                         }
                         else
                         {
@@ -125,8 +132,6 @@ namespace ServerLibrary
                     break;
                 }
             }
-
-
         }
     }
 }
