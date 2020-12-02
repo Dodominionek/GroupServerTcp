@@ -10,44 +10,46 @@ namespace ServerLibrary
     public class UserHandler
     {
         private readonly string path = "userCredentials";
-        private Dictionary<string, string> credentials;
+        private Dictionary<int, User> userList = new Dictionary<int, User>();
 
         public UserHandler() {
             ReadUsersCredentials();
         }
 
-        public Dictionary<string, string> Credentials { get => credentials; set => credentials = value; }
+        public Dictionary<int, User> UserList { get => userList; set => userList = value; }
 
         // Sprawdza czy dany user jest na liście, jeśli tak to go dodaje (Whitelista)
-        public void AddNewUser(string login, string password)
+        public void AddNewUser(string login, string password, int permission)
         {
-            Credentials.Add(login, password);
+            User user = new User(login, password, permission);
+            userList.Add(user.id, user);
             StreamWriter file = File.AppendText("usersCredentials");
-            file.WriteLine("\r\n" + login + ";" + password);
+            file.WriteLine("\r\n" + user.login + ";" + user.password + ";" + user.permission.ToString());
             file.Close();
         }
 
         public void ReadUsersCredentials()
         {
             string line;
-            var credentials = new Dictionary<string, string>();
+            var userList = new Dictionary<int, User>();
             StreamReader file = new StreamReader("usersCredentials");
             while ((line = file.ReadLine()) != null)
             {
                 var cred = line.Split(';');
-                credentials.Add(cred[0], cred[1]);
+                User user = new User(cred[0], cred[1], Int32.Parse(cred[2]));
+                userList.Add(user.id, user);
             }
             file.Close();
-            Credentials = credentials;
+            UserList = userList;
         }
 
         // Wyświetlenie na konsoli wszystkich użytkowników 
         public void ShowUsers()
         {
             Console.WriteLine("Current users: ");
-            foreach (var user in Credentials)
+            foreach (var user in UserList)
             {
-                Console.WriteLine("Login: " + user.Key + " Password: " + user.Value);
+                Console.WriteLine("Login: " + user.Value.login + " Password: " + user.Value.password + " Permissions: " + user.Value.permission.ToString());
             }
         }
 
@@ -56,6 +58,13 @@ namespace ServerLibrary
         {
             using (StreamReader sr = File.OpenText("usersCredentials"))
             {
+                foreach(var us in UserList)
+                {
+                    if(us.Value.login == login)
+                    {
+                        userList.Remove(us.Key);
+                    }
+                }
                 string s;
                 List<string> linesToKeep = new List<string> { };
                 var tempFile = Path.GetTempFileName();
@@ -66,7 +75,6 @@ namespace ServerLibrary
                     {
                         linesToKeep.Add(s);
                     }
-                    
                 }
                 File.WriteAllLines("usersCredentials", linesToKeep);
             }
@@ -74,11 +82,11 @@ namespace ServerLibrary
 
         public bool Login(string login, string password)
         {
-            foreach (var user in Credentials)
+            foreach (var user in userList)
             {
-                if (user.Key == login)
+                if (user.Value.login == login)
                 {
-                    if (user.Value == password)
+                    if (user.Value.password == password)
                     {
                         return true;
                     }
@@ -88,7 +96,5 @@ namespace ServerLibrary
             }
             return false;
         }
-
-
     }
 }
